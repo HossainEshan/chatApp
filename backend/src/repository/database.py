@@ -1,43 +1,43 @@
-import pydantic
-from sqlalchemy.ext.asyncio import (
-    async_sessionmaker as sqlalchemy_async_sessionmaker,
-    AsyncEngine as SQLAlchemyAsyncEngine,
-    AsyncSession as SQLAlchemyAsyncSession,
-    create_async_engine as create_sqlalchemy_async_engine,
-)
-from sqlalchemy.pool import Pool as SQLAlchemyPool, QueuePool as SQLAlchemyQueuePool
+from typing import Optional
 
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster, NoHostAvailable, Session
+from cassandra.cqlengine import connection
 from src.config.manager import settings
 
 
-class AsyncDatabase:
+class CassandraDatabase:
     def __init__(self):
-        self.postgres_uri: pydantic.PostgresDsn = pydantic.PostgresDsn(
-            url=f"{settings.DB_POSTGRES_SCHEMA}://{settings.DB_POSTGRES_USENRAME}:{settings.DB_POSTGRES_PASSWORD}@{settings.DB_POSTGRES_HOST}:{settings.DB_POSTGRES_PORT}/{settings.DB_POSTGRES_NAME}",
-            scheme=settings.DB_POSTGRES_SCHEMA,
+        """Initialize the Cassandra database connection attributes."""
+        self.cluster: Optional[Cluster] = None
+        self.session: Optional[Session] = None
+
+    def connect(self):
+        """Initiate Cassandra connection using settings."""
+        auth_provider = PlainTextAuthProvider(
+            username=settings.CASSANDRA_USERNAME, password=settings.CASSANDRA_PASSWORD
         )
-        self.async_engine: SQLAlchemyAsyncEngine = create_sqlalchemy_async_engine(
-            url=self.set_async_db_uri,
-            echo=settings.IS_DB_ECHO_LOG,
-            pool_size=settings.DB_POOL_SIZE,
-            max_overflow=settings.DB_POOL_OVERFLOW,
-            poolclass=SQLAlchemyQueuePool,
-        )
-        self.async_session: SQLAlchemyAsyncSession = SQLAlchemyAsyncSession(bind=self.async_engine)
-        self.pool: SQLAlchemyPool = self.async_engine.pool
+        try:
+            self.cluster = Cluster(
+                contact_points=[settings.CASSANDRA_HOST], port=settings.CASSANDRA_PORT, auth_provider=auth_provider
+            )
+            self.session = self.cluster.connect(keyspace="chatapp")
+            connection.register_connection(
+                name="default", session=self.session, default=True
+            )  # Name of the connection
 
-    @property
-    def set_async_db_uri(self) -> str | pydantic.PostgresDsn:
-        """
-        Set the synchronous database driver into asynchronous version by utilizing AsyncPG:
+        except NoHostAvailable as e:
+            print(f"Error connecting to Cassandra: {e}")
+            raise
 
-            `postgresql://` => `postgresql+asyncpg://`
-        """
-        return (
-            self.postgres_uri.replace("postgresql://", "postgresql+asyncpg://")
-            if self.postgres_uri
-            else self.postgres_uri
-        )
+    def shutdown(self):
+        """Shutdown the Cassandra connection."""
+        if self.cluster:
+            try:
+                self.cluster.shutdown()
+            except Exception as e:
+                print(f"Error shutting down Cassandra connection: {e}")
 
 
-async_db: AsyncDatabase = AsyncDatabase()
+# Singleton instance of CassandraDatabase
+database: CassandraDatabase = CassandraDatabase()

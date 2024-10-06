@@ -1,7 +1,7 @@
 import datetime
+from uuid import UUID
 
 import pydantic
-
 from src.models.schemas.base import BaseSchemaModel
 
 
@@ -37,3 +37,9 @@ class AccountWithToken(BaseSchemaModel):
 class AccountInResponse(BaseSchemaModel):
     id: int
     authorized_account: AccountWithToken
+
+
+class UserInResponse(BaseSchemaModel):
+    user_id: UUID
+    username: str
+    email: str

@@ -1,85 +1,41 @@
-version: '3.9'
-
 services:
-  db:
-    image: postgres:latest
-    container_name: db
-    restart: always
+  cassandra:
+    image: cassandra:5.0.1
+    container_name: cassandra
     environment:
-      - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - PGDATA=/var/lib/postgresql/data/
+      - CASSANDRA_CLUSTER_NAME=Test Cluster
+      - CASSANDRA_SEEDS=cassandra
+    ports:
+      - "${CASSANDRA_PORT}:9042"
     volumes:
-      - postgresql_db_data:/var/lib/postgresql/data/
-    expose:
-      - 5432
-    ports:
-      - 5433:5432
+      - cassandra-data:/var/lib/cassandra
+      - ./cassandra.yaml:/etc/cassandra/cassandra.yaml
+      - ./init_cassandra.sh:/docker-entrypoint-initdb.d/init_cassandra.sh # Adding the init script
+    env_file:
+      - .env
 
-  db_editor:
-    image: adminer
-    container_name: db_editor
-    restart: always
-    environment:
-      - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-    expose:
-      - 8080
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
-      - 8081:8080
-    depends_on:
-      - db
-
-  backend_app:
-    container_name: backend_app
-    restart: always
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis-data:/data
+    env_file:
+      - .env
+  fastapi:
     build:
+      context: ./backend
       dockerfile: Dockerfile
-      context: ./backend/
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT}
-      - DEBUG=${DEBUG}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_SCHEMA=${POSTGRES_SCHEMA}
-      - POSTGRES_USERNAME=${POSTGRES_USERNAME}
-      - BACKEND_SERVER_HOST=${BACKEND_SERVER_HOST}
-      - BACKEND_SERVER_PORT=${BACKEND_SERVER_PORT}
-      - BACKEND_SERVER_WORKERS=${BACKEND_SERVER_WORKERS}
-      - DB_TIMEOUT=${DB_TIMEOUT}
-      - DB_POOL_SIZE=${DB_POOL_SIZE}
-      - DB_MAX_POOL_CON=${DB_MAX_POOL_CON}
-      - DB_POOL_OVERFLOW=${DB_POOL_OVERFLOW}
-      - IS_DB_ECHO_LOG=${IS_DB_ECHO_LOG}
-      - IS_DB_EXPIRE_ON_COMMIT=${IS_DB_EXPIRE_ON_COMMIT}
-      - IS_DB_FORCE_ROLLBACK=${IS_DB_FORCE_ROLLBACK}
-      - IS_ALLOWED_CREDENTIALS=${IS_ALLOWED_CREDENTIALS}
-      - API_TOKEN=${API_TOKEN}
-      - AUTH_TOKEN=${AUTH_TOKEN}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - JWT_SUBJECT=${JWT_SUBJECT}
-      - JWT_TOKEN_PREFIX=${JWT_TOKEN_PREFIX}
-      - JWT_ALGORITHM=${JWT_ALGORITHM}
-      - JWT_MIN=${JWT_MIN}
-      - JWT_HOUR=${JWT_HOUR}
-      - JWT_DAY=${JWT_DAY}
-      - HASHING_ALGORITHM_LAYER_1=${HASHING_ALGORITHM_LAYER_1}
-      - HASHING_ALGORITHM_LAYER_2=${HASHING_ALGORITHM_LAYER_2}
-      - HASHING_SALT=${HASHING_SALT}
-    volumes:
-      - ./backend/:/usr/backend/
-    expose:
-      - 8000
+    container_name: fastapi
     ports:
-      - 8001:8000
+      - "8000:8000"
     depends_on:
-      - db
-
+      - cassandra
+      - redis
+    env_file:
+      - .env
 volumes:
-  postgresql_db_data:
+  cassandra-data:
+  redis-data:
