@@ -1,12 +1,42 @@
 import fastapi
 import loguru
+from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import Cluster, NoHostAvailable, Session
+from cassandra.cqlengine import connection
 from sqlalchemy import event
 from sqlalchemy.dialects.postgresql.asyncpg import AsyncAdapt_asyncpg_connection
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSessionTransaction
 from sqlalchemy.pool.base import _ConnectionRecord
-
+from src.config.manager import settings
 from src.repository.database import async_db
-from src.repository.table import Base
+
+
+def initialize_db(database):
+
+    auth_provider = PlainTextAuthProvider(username="cassandra", password="cassandra")
+    try:
+        cluster = Cluster(
+            contact_points=[settings.CASSANDRA_HOST], port=settings.CASSANDRA_PORT, auth_provider=auth_provider
+        )
+        session = cluster.connect()
+        session
+
+    except Exception as e:
+        loguru.logger.error("Connection refused using default credentials")
+        raise
+
+    # Try to connect using default credentials
+    auth_provider = PlainTextAuthProvider(username="cassandra", password="cassandra")
+    try:
+        cluster = Cluster(
+            contact_points=[settings.CASSANDRA_HOST], port=settings.CASSANDRA_PORT, auth_provider=auth_provider
+        )
+        session = cluster.connect()
+        session
+
+    except Exception as e:
+        loguru.logger.error("Connection refused using default credentials")
+        raise
 
 
 @event.listens_for(target=async_db.async_engine.sync_engine, identifier="connect")

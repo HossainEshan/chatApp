@@ -24,11 +24,18 @@ def initialize_backend_application() -> fastapi.FastAPI:
         # Initialize Redis connection
         await cache.initialize()
 
-        time.sleep(5)
-
         # Initialize Cassandra connection
-        database.connect()
+        for retry in range(6):
+            try:
+                database.connect()
+                break
+            except:
+                if retry == 5:
+                    raise
+                print("Cassandra connection failed, retrying")
+                time.sleep(30)
 
+        management.sync_table(User)
         management.sync_table(Message)
 
     app.add_middleware(

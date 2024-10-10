@@ -13,3 +13,5 @@ echo "Cassandra is up - executing command"
 cqlsh -u cassandra -p cassandra -e "CREATE USER IF NOT EXISTS $CASSANDRA_USERNAME WITH PASSWORD '$CASSANDRA_PASSWORD' SUPERUSER;"
 
 echo "Superuser created successfully"
+
+CREATE KEYSPACE IF NOT EXISTS chatapp WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};

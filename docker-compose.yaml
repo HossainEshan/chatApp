@@ -3,7 +3,7 @@ services:
     image: cassandra:5.0.1
     container_name: cassandra
     environment:
-      - CASSANDRA_CLUSTER_NAME=Test Cluster
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER}
       - CASSANDRA_SEEDS=cassandra
     ports:
       - "${CASSANDRA_PORT}:9042"
