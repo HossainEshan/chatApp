@@ -1,3 +1,5 @@
+import time
+
 import loguru
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, Session
@@ -11,7 +13,16 @@ class CassandraDatabase:
         self.cluster: Cluster | None = None
         self.session: Session | None = None
 
-    def connect(self) -> None:
+    def connect(self, retries=5, delay=30):
+        for attempt in range(retries):
+            try:
+                database._connect()
+                break
+            except:
+                print("Cassandra connection failed, retrying")
+                time.sleep(delay)
+
+    def _connect(self) -> None:
         """Initiate Cassandra connection using environment settings."""
         auth_provider = PlainTextAuthProvider(
             username=settings.CASSANDRA_USERNAME, password=settings.CASSANDRA_PASSWORD
@@ -39,7 +50,7 @@ class CassandraDatabase:
                 contact_points=[settings.CASSANDRA_HOST], port=settings.CASSANDRA_PORT, auth_provider=auth_provider
             )
             self.session = self.cluster.connect()
-            loguru.logger.info("Successfully connected using default new credentials")
+            loguru.logger.info("Successfully connected using default credentials")
 
             # Create keyspace and user if necessary
             self.session.execute(
@@ -51,9 +62,11 @@ class CassandraDatabase:
                 f"CREATE USER IF NOT EXISTS '{settings.CASSANDRA_USERNAME}' WITH PASSWORD '{settings.CASSANDRA_PASSWORD}' SUPERUSER;"
             )
             loguru.logger.info("Successfully created new superuser using environment credentials")
+            self.session.execute(f"ALTER USER cassandra WITH PASSWORD '{settings.JWT_SECRET_KEY}';")
+            loguru.logger.info("Altered default superuser")
 
             loguru.logger.info("Will try to reconnect using new superuser")
-            self.connect()
+            self._connect()
 
         except Exception as e:
             loguru.logger.error(f"Failed to connect with default credentials: \n {e}")
