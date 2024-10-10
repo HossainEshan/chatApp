@@ -11,6 +11,7 @@ from src.api.endpoints import router as api_endpoint_router
 #     terminate_backend_server_event_handler,
 # )
 from src.config.manager import settings
+from src.models.db.models import Message, User
 from src.repository.cache import cache
 from src.repository.database import database
 
@@ -28,18 +29,14 @@ def initialize_backend_application() -> fastapi.FastAPI:
         # Initialize Cassandra connection
         database.connect()
 
-        # Clear the Cassandra database for testing purposes
-        # management.drop_keyspace(settings.CASSANDRA_KEYSPACE)  # Clear the existing keyspace
-        # management.create_keyspace(settings.CASSANDRA_KEYSPACE)  # Recreate the keyspace
-        # Add any necessary table creation calls here
+        management.sync_table(Message)
 
-    # app.add_middleware(
-    #     CORSMiddleware,
-    #     allow_origins=settings.ALLOWED_ORIGINS,
-    #     allow_credentials=settings.IS_ALLOWED_CREDENTIALS,
-    #     allow_methods=settings.ALLOWED_METHODS,
-    #     allow_headers=settings.ALLOWED_HEADERS,
-    # )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_methods=settings.ALLOWED_METHODS,
+        allow_headers=settings.ALLOWED_HEADERS,
+    )
 
     app.add_event_handler("startup", startup_event)
     # app.add_event_handler(

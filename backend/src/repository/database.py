@@ -1,5 +1,3 @@
-from typing import Optional
-
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, NoHostAvailable, Session
 from cassandra.cqlengine import connection
@@ -9,10 +7,10 @@ from src.config.manager import settings
 class CassandraDatabase:
     def __init__(self):
         """Initialize the Cassandra database connection attributes."""
-        self.cluster: Optional[Cluster] = None
-        self.session: Optional[Session] = None
+        self.cluster: Cluster | None = None
+        self.session: Session | None = None
 
-    def connect(self):
+    def connect(self) -> None:
         """Initiate Cassandra connection using settings."""
         auth_provider = PlainTextAuthProvider(
             username=settings.CASSANDRA_USERNAME, password=settings.CASSANDRA_PASSWORD
@@ -30,7 +28,7 @@ class CassandraDatabase:
             print(f"Error connecting to Cassandra: {e}")
             raise
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Shutdown the Cassandra connection."""
         if self.cluster:
             try:

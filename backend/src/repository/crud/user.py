@@ -17,8 +17,9 @@ from src.utilities.exceptions.password import PasswordDoesNotMatch
 
 
 class UserCRUDRepository(BaseCRUDRepository):
-    async def create_user(self, user_create: AccountInCreate) -> User:
+    async def create_user(self, user_create: AccountInCreate) -> UserInResponse:
         loop = asyncio.get_event_loop()
+
         # Check if user with same username or email already exists
         existing_user = await loop.run_in_executor(
             None, lambda: User.objects.filter(username=user_create.username).first()
@@ -38,12 +39,14 @@ class UserCRUDRepository(BaseCRUDRepository):
             username=user_create.username, email=user_create.email, hashed_password=hashed_password
         )
 
+        # Return Pydantic model
         return UserInResponse(
             user_id=new_account["user_id"], username=new_account["username"], email=new_account["email"]
         )
 
     async def read_all_users(self) -> typing.List[UserInResponse]:  # Change return type to List[UserResponse]
         loop = asyncio.get_event_loop()
+
         # Fetch users from the database
         users = await loop.run_in_executor(None, lambda: list(User.objects.all()))
 
@@ -61,14 +64,16 @@ class UserCRUDRepository(BaseCRUDRepository):
 
     #     return query.scalar()  # type: ignore
 
-    # async def read_account_by_username(self, username: str) -> Account:
-    #     stmt = sqlalchemy.select(Account).where(Account.username == username)
-    #     query = await self.async_session.execute(statement=stmt)
+    async def read_account_by_username(self, username: str) -> UserInResponse:
+        loop = asyncio.get_event_loop()
 
-    #     if not query:
-    #         raise EntityDoesNotExist("Account with username `{username}` does not exist!")
+        # Fetch users from the database
+        user = await loop.run_in_executor(None, lambda: User.objects.filter(username=username).first())
 
-    #     return query.scalar()  # type: ignore
+        if not user:
+            raise EntityDoesNotExist(f"Account with username `{username}` does not exist!")
+
+        return UserInResponse(user_id=user["user_id"], username=user["username"], email=user["email"])
 
     # async def read_account_by_email(self, email: str) -> Account:
     #     stmt = sqlalchemy.select(Account).where(Account.email == email)

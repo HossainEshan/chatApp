@@ -15,23 +15,15 @@ class BaseCassandraModel(Model):
 
 # Message Model
 class Message(BaseCassandraModel):
-    # Define primary key with clustering order
-    chatroom_id = columns.UUID(primary_key=True, partition_key=True)  # Partition by chatroom ID
-    message_id = columns.UUID(
-        primary_key=True, default=lambda: uuid_from_time(datetime.now())
-    )  # Clustering key for message
+    chatroom_id = columns.UUID(primary_key=True, partition_key=True)  # Partition key
+    created_at = columns.DateTime(primary_key=True, default=datetime.now, clustering_order="DESC")
+    message_id = columns.UUID(default=lambda: uuid_from_time(datetime.now()))  # Clustering key for message
+
+    # Clustering key for created_at
     message_text = columns.Text(required=True)
     user_id = columns.UUID(required=True)
-    created_at = columns.DateTime(default=datetime.now)  # No clustering_order here
 
     __table_name__ = "messages"
-
-    # Set the primary key with clustering order
-    __primary_key__ = (chatroom_id, message_id, created_at)
-
-    class Meta:
-        # Specify clustering order here
-        clustering_order = {"created_at": "DESC"}
 
 
 # User Model

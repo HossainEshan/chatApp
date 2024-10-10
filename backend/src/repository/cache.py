@@ -1,5 +1,3 @@
-from typing import Optional
-
 import redis.asyncio as Redis
 from redis.exceptions import RedisError
 from src.config.manager import settings
@@ -8,7 +6,7 @@ from src.config.manager import settings
 class RedisCache:
     def __init__(self):
         """Initialize Redis connection attributes."""
-        self.redis: Redis.Redis = None
+        self.redis: Redis.Redis | None = None
         self.redis_uri: str = f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
 
     async def initialize(self) -> None:

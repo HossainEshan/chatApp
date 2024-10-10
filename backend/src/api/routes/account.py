@@ -11,7 +11,8 @@ from src.models.schemas.account import (  # AccountInUpdate,; AccountWithToken,
 from src.repository.crud.user import UserCRUDRepository
 
 # from src.securities.authorizations.jwt import jwt_generator
-# from src.utilities.exceptions.database import EntityDoesNotExist
+from src.utilities.exceptions.database import EntityAlreadyExists, EntityDoesNotExist
+
 # from src.utilities.exceptions.http.exc_404 import (
 #     http_404_exc_email_not_found_request,
 #     http_404_exc_id_not_found_request,
@@ -36,8 +37,29 @@ async def get_all_users(
     return all_users
 
 
+@router.get(
+    path="/{username}",
+    name="users:read-user-by-username",
+    response_model=UserInResponse,
+    status_code=fastapi.status.HTTP_200_OK,
+)
+async def get_user_by_username(
+    username: str,
+    user_repo: UserCRUDRepository = fastapi.Depends(get_repository(repo_type=UserCRUDRepository)),
+) -> UserInResponse:
+    try:
+        user = await user_repo.read_account_by_username(username=username)
+    except EntityDoesNotExist:
+        raise fastapi.HTTPException(
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            detail=f"Username {username} not found",
+        )
+
+    return user
+
+
 @router.post(
-    path="/signup",
+    path="/createuser",
     name="users:create-user",
     response_model=UserInResponse,
     status_code=fastapi.status.HTTP_201_CREATED,
@@ -46,8 +68,14 @@ async def create_user(
     user_create: AccountInCreate,
     user_repo: UserCRUDRepository = fastapi.Depends(get_repository(repo_type=UserCRUDRepository)),
 ) -> UserInResponse:
-    new_user = await user_repo.create_user(user_create=user_create)
+    try:
+        new_user = await user_repo.create_user(user_create=user_create)
 
+    except EntityAlreadyExists:
+        fastapi.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail=f"Username {user_create.username} or {user_create.email} already taken",
+        )
     return new_user
 
 
