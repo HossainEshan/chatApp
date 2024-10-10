@@ -31,10 +31,12 @@ class CassandraDatabase:
             self.cluster = Cluster(
                 contact_points=[settings.CASSANDRA_HOST], port=settings.CASSANDRA_PORT, auth_provider=auth_provider
             )
-            self.session = self.cluster.connect(keyspace="chatapp")
+            self.session = self.cluster.connect(keyspace=settings.CASSANDRA_KEYSPACE)
             connection.register_connection(name="default", session=self.session, default=True)  # Register connection
 
-            loguru.logger.info("Successfully initialized connection to Cassandra")
+            loguru.logger.info(
+                f"Database Connection -- Successfully connected ({settings.CASSANDRA_HOST}:{settings.CASSANDRA_PORT}), keyspace={settings.CASSANDRA_KEYSPACE}"
+            )
 
         except Exception as e:
             loguru.logger.info(
@@ -50,22 +52,18 @@ class CassandraDatabase:
                 contact_points=[settings.CASSANDRA_HOST], port=settings.CASSANDRA_PORT, auth_provider=auth_provider
             )
             self.session = self.cluster.connect()
-            loguru.logger.info("Successfully connected using default credentials")
 
             # Create keyspace and user if necessary
             self.session.execute(
-                "CREATE KEYSPACE IF NOT EXISTS chatapp WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+                f"CREATE KEYSPACE IF NOT EXISTS {settings.CASSANDRA_KEYSPACE} WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}};"
             )
-            loguru.logger.info("Successfully created new keyspace")
-            self.session.set_keyspace("chatapp")
+            self.session.set_keyspace(settings.CASSANDRA_KEYSPACE)
             self.session.execute(
                 f"CREATE USER IF NOT EXISTS '{settings.CASSANDRA_USERNAME}' WITH PASSWORD '{settings.CASSANDRA_PASSWORD}' SUPERUSER;"
             )
-            loguru.logger.info("Successfully created new superuser using environment credentials")
             self.session.execute(f"ALTER USER cassandra WITH PASSWORD '{settings.JWT_SECRET_KEY}';")
-            loguru.logger.info("Altered default superuser")
 
-            loguru.logger.info("Will try to reconnect using new superuser")
+            loguru.logger.info("Database Initialization -- All tasks completed successfully")
             self._connect()
 
         except Exception as e:
